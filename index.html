@@ -257,6 +257,7 @@ svg.graph { width: 100%; height: auto; display: block; }
     <p class="sous">Colonisez les planètes, construisez sur leur surface et en orbite, menez vos flottes, et captez l'énergie du Soleil sans geler la Terre.</p>
     <div id="reprise"></div>
     <p class="sous" style="text-align:center"><button class="btn petit" data-a="importer">Importer une partie (fichier)</button><input type="file" id="fichierPartie" accept=".json,application/json" hidden></p>
+    <div class="actions" id="choixDiff" style="justify-content:center" role="group" aria-label="Difficulté"></div>
     <div class="factions" id="choixFaction"></div>
     <p class="sous">Maquette jouable : un tour = un mois, les planètes tournent vraiment autour du Soleil (périodes réelles).</p>
   </div>
@@ -497,10 +498,16 @@ const etatNeuf = () => ({
   j: null, rivaux: [], tour: 0, res: { cr: 500, me: 300, he: 10 }, dyson: 0,
   techs: new Set(), recherche: null, prog: 0, c: {}, flottes: [], missions: [], convois: [], journal: [], combats: [], offres: [],
   rel: {}, tension: {}, vagues: 0, ia: {}, lagrange: {}, evts: [], effets: {}, compteurs: { faillite: 0, gel: 0, paix: 0 },
-  capitales: {}, arche: null, fin: null, reps: {}, geysers: 0, stade: {},
+  capitales: {}, arche: null, fin: null, reps: {}, geysers: 0, stade: {}, diff: 'normal', guerreR: {}, tensionR: {},
   vue: 'systeme', onglet: 'corps', sel: 'terre', selL: null, selFlotte: null, carteBat: null, selTuile: null,
 });
 const E = etatNeuf();
+// difficulté : revenus des rivaux et tension à partir de laquelle ils vous déclarent la guerre
+const DIFF = { facile: { n: 'Facile', eco: .7, guerre: 10 }, normal: { n: 'Normal', eco: 1, guerre: 0 }, difficile: { n: 'Difficile', eco: 1.3, guerre: -10 } };
+let difficulte = 'normal';
+const diff = () => DIFF[E.diff] || DIFF.normal;
+const paire = (a, b) => [a, b].sort().join('-');
+const vivant = r => CORPS.some(c => present(c.id, r));
 const s = id => E.c[id];
 const capture = () => E.dyson * .04; // 20 segments captent 80 % : la Terre peut rester habitable avec des miroirs
 const facteurT = () => Math.pow(1 - capture(), .25); // loi de Stefan-Boltzmann : T ∝ (flux)^1/4
@@ -538,7 +545,7 @@ const peutConstruire = (b, t) => BAT[b].sur.some(g => tags(t.t).includes(g));
 function journal(txt, k = '') { E.journal.unshift({ txt, k }); E.journal.length = Math.min(E.journal.length, 30); }
 
 function initPartie(j) {
-  E.j = j; E.rivaux = ['atl', 'hel', 'pac'].filter(f => f !== j);
+  E.j = j; E.diff = difficulte; E.rivaux = ['atl', 'hel', 'pac'].filter(f => f !== j);
   document.documentElement.style.setProperty('--j', FAC[j].c);
   E.rel = { [E.rivaux[0]]: 'paix', [E.rivaux[1]]: 'paix', vei: 'inconnu' };
   E.tension = { [E.rivaux[0]]: 20, [E.rivaux[1]]: 35 };
@@ -574,12 +581,13 @@ function initPartie(j) {
   recentrer(); rendrePanneau(); rendreHUD();
 }
 const portee = () => 3 + (E.techs.has('ion') ? 1 : 0) + (E.techs.has('fus') ? 2 : 0) + (E.lagrange.TL5 === E.j ? 1 : 0);
-const puissance = f => Object.entries(f.nav).reduce((s, [k, n]) => s + NAV[k].pw * n, 0) * (f.camp === E.j && (E.techs.has('rail') ? 1.25 : 1) * (E.j === 'pac' ? 1.25 : 1) || 1);
+const puissance = f => Object.entries(f.nav).reduce((s, [k, n]) => s + NAV[k].pw * n, 0) * (f.camp === E.j && (E.techs.has('rail') ? 1.25 : 1) * (E.j === 'pac' ? 1.25 : 1) || 1) * (1 + .1 * (E.ia[f.camp]?.niv || 0));
 const nbNav = f => Object.values(f.nav).reduce((a, b) => a + b, 0);
 function hostile(a, b) {
   if (a === b) return false;
   if (a === 'vei' || b === 'vei') { const autre = a === 'vei' ? b : a; return !(autre === E.j && E.rel.vei === 'paix'); }
   if (a === E.j || b === E.j) return E.rel[a === E.j ? b : a] === 'guerre';
+  if (E.rivaux.includes(a) && E.rivaux.includes(b)) return !!E.guerreR[paire(a, b)];
   return false;
 }
 
@@ -861,8 +869,9 @@ function debarquer(f, c, fac) {
   st.pop[f.camp] = (st.pop[f.camp] || 0) + (st.pop[fac] || 0) * .8; delete st.pop[fac];
   f.siege = null;
   const txt = `${cap1(FAC[f.camp].le)} s'empare du territoire ${FAC[fac].du} sur ${c.nom}${c.id === 'terre' ? ' : sa capitale tombe' : ''}.`;
-  journal(txt, f.camp === E.j ? 'bon' : 'mal');
-  banniere('Débarquement réussi', txt, f.camp === E.j ? 'bon' : 'mal');
+  const ton = f.camp === E.j ? 'bon' : fac === E.j ? 'mal' : '';
+  journal(txt, ton);
+  banniere('Débarquement réussi', txt, ton);
   fxDebarquement(c.id, prises, f.camp);
 }
 const bonusOrb = f => corpsIci(f.pos).reduce((n, c) => n + nbOrb(c.id, 'satdef', f.camp), 0) * 10;
@@ -1006,21 +1015,35 @@ function construireIA(r) {
   const k = BAT[o.b].cout; if (ia.cr < k.cr || ia.me < k.me) return;
   ia.cr -= k.cr; ia.me -= k.me; o.t.b = o.b; revendiquer(s(o.c.id), o.t, 1, r); naissance(o.c.id, o.t.i);
 }
+// deux rivaux qui se disputent les mêmes corps finissent par se battre, puis s'épuisent et signent la paix
+function tourEntreRivaux() {
+  const [a, b] = E.rivaux, k = paire(a, b);
+  if (!vivant(a) || !vivant(b)) { E.guerreR[k] = false; return; }
+  const disputes = CORPS.filter(c => c.id !== 'terre' && present(c.id, a) && present(c.id, b)).length;
+  const t = E.tensionR[k] = clamp((E.tensionR[k] ?? 20) + (E.guerreR[k] ? -1.5 : disputes * .4 - .1) - (E.rel.vei === 'hostile' ? .5 : 0), 0, 100);
+  if (!E.guerreR[k] && t >= 80) { E.guerreR[k] = true; journal(`${cap1(FAC[a].le)} et ${FAC[b].le} entrent en guerre !`, 'mal'); banniere('Guerre entre rivaux', `${cap1(FAC[a].le)} et ${FAC[b].le} se disputent le système.`, 'mal'); }
+  else if (E.guerreR[k] && t < 35) { E.guerreR[k] = false; E.tensionR[k] = 20; journal(`${cap1(FAC[a].le)} et ${FAC[b].le} signent la paix.`, 'bon'); }
+}
 function tourRivaux() {
   const colJ = CORPS.filter(c => c.id !== 'terre' && present(c.id)).length;
+  tourEntreRivaux();
   E.rivaux.forEach(r => {
+    if (!vivant(r)) return; // rival éliminé
     const ia = E.ia[r];
     let pop = 0, mines = 0;
     CORPS.forEach(c => { const st = s(c.id); pop += st.pop[r] || 0; if (surTerre(c)) mines += st.tuiles?.filter(t => t.o === r && t.b === 'mine').length || 0; });
-    ia.cr += 8 + pop * .015; ia.me += 3 + mines * 4;
+    ia.cr += (8 + pop * .015) * diff().eco; ia.me += (3 + mines * 4) * diff().eco;
     for (let n = 0; n < 3 && ia.me < 150 && ia.cr > 300; n++) { ia.cr -= 120; ia.me += 80; } // achat de métaux : sinon les crédits dorment et la flotte ne se reconstruit jamais
-    const assiegee = E.flottes.find(f => f.camp === E.j && f.siege?.fac === r);
+    // les réserves trop grosses financent la recherche militaire (coût croissant, 5 niveaux de +10 %)
+    const niv = ia.niv || 0;
+    if (niv < 5 && ia.cr > 500 + 1000 * (niv + 1)) { ia.cr -= 1000 * (niv + 1); ia.niv = niv + 1; journal(`${cap1(FAC[r].le)} perfectionne ses vaisseaux : +${ia.niv * 10} % de puissance.`, E.rel[r] === 'guerre' ? 'mal' : ''); }
+    const assiegee = E.flottes.find(g => g.siege?.fac === r && hostile(g.camp, r));
     let f = E.flottes.find(g => g.camp === r);
     // rapport de force avec le joueur : un rival fort attaque plus vite, un rival faible cherche la paix
     const rapport = (f ? puissance(f) : 0) / Math.max(10, E.flottes.filter(g => g.camp === E.j).reduce((n, g) => n + puissance(g), 0));
-    E.tension[r] = clamp(E.tension[r] + colJ * .4 + Math.max(0, E.dyson - 3) * 2 + (assiegee ? 5 : 0) - (E.rel[r] === 'pacte' ? 2 : 0) - (E.rel[r] === 'guerre' ? 1.2 : .3), 0, 100);
+    E.tension[r] = clamp(E.tension[r] + colJ * .4 + Math.max(0, E.dyson - 3) * 2 + (assiegee?.camp === E.j ? 5 : 0) - (E.rel[r] === 'pacte' ? 2 : 0) - (E.rel[r] === 'guerre' ? 1.2 : .3), 0, 100);
     if (E.dyson > 3 && rnd() < .15) journal(`${cap1(FAC[r].le)} proteste : votre sphère refroidit la Terre.`, 'mal');
-    if (E.tension[r] >= (rapport > 1.5 ? 70 : rapport < .6 ? 95 : 85) && E.rel[r] !== 'guerre') { E.rel[r] = 'guerre'; journal(`${cap1(FAC[r].le)} vous déclare la guerre !`, 'mal'); banniere('Déclaration de guerre', `${cap1(FAC[r].le)} vous déclare la guerre.`, 'mal'); fxEcran('alerte'); }
+    if (E.tension[r] >= (rapport > 1.5 ? 70 : rapport < .6 ? 95 : 85) + diff().guerre && E.rel[r] !== 'guerre') { E.rel[r] = 'guerre'; journal(`${cap1(FAC[r].le)} vous déclare la guerre !`, 'mal'); banniere('Déclaration de guerre', `${cap1(FAC[r].le)} vous déclare la guerre.`, 'mal'); fxEcran('alerte'); }
     // propositions diplomatiques
     if (!E.offres.length) {
       if (E.rel[r] === 'paix' && E.tension[r] < 30 && rnd() < .05) E.offres.push({ fac: r, type: 'pacte', texte: `${cap1(FAC[r].le)} propose un pacte commercial : +6 ₡ par mois et une tension qui baisse.` });
@@ -1039,29 +1062,31 @@ function tourRivaux() {
     const chasse = menace && f && puissance(f) >= puissance(menace) * .8; // trop faible : la flotte garde la Terre au lieu de se sacrifier
     if (!f && ia.cr > 150) { f = { id: nid(), nom: 'Escadre ' + FAC[r].nom.split(' ').pop(), camp: r, nav: { ch: 2, cr: 1, pv: 0, tr: 0 }, dock: 'terre', pos: pos(C.terre), role: 'patrouille' }; E.flottes.push(f); ia.cr -= 100; }
     if (!f) return;
+    const ennemis = [...(E.rel[r] === 'guerre' ? [E.j] : []), ...E.rivaux.filter(x => x !== r && E.guerreR[paire(r, x)])];
     let cible = null, transports = 0;
-    if (E.rel[r] === 'guerre') {
-      // la cible qui rapporte le plus pour sa défense, parmi celles que la flotte peut vraiment battre ; la capitale vaut la victoire
-      const defense = c => corpsIci(pos(c)).reduce((n, x) => n + (present(x.id) ? garnison(x, E.j) + nbOrb(x.id, 'satdef', E.j) * 10 : 0), 0) + E.flottes.filter(g => g.camp === E.j && dist(g.pos, pos(c)) === 0).reduce((n, g) => n + puissance(g), 0);
-      const valeur = c => corpsIci(pos(c)).reduce((n, x) => n + (s(x.id).pop[E.j] || 0) + (s(x.id).tuiles?.filter(t => t.o === E.j && t.b).length || 0) * 20, 0) + (c.id === 'terre' ? 2000 : 0);
-      const terrain = CORPS.filter(c => !c.parent && corpsIci(pos(c)).some(x => present(x.id))).map(c => ({ c, d: defense(c), v: valeur(c) / (1 + dist(f.pos, pos(c)) / 8) }));
-      const jouable = terrain.filter(x => puissance(f) >= x.d * 1.2).sort((a, b) => b.v / (1 + b.d) - a.v / (1 + a.d))[0];
-      cible = jouable?.c || null;
+    if (ennemis.length) {
+      // la cible qui rapporte le plus pour sa défense, parmi celles que la flotte peut vraiment battre ; une capitale vaut la victoire
+      const flotteIci = (e, h) => E.flottes.filter(g => g.camp === e && dist(g.pos, h) === 0).reduce((n, g) => n + puissance(g), 0);
+      const defense = (c, e) => corpsIci(pos(c)).reduce((n, x) => n + (present(x.id, e) ? garnison(x, e) + nbOrb(x.id, 'satdef', e) * 10 : 0), 0) + flotteIci(e, pos(c));
+      const valeur = (c, e) => corpsIci(pos(c)).reduce((n, x) => n + (s(x.id).pop[e] || 0) + (s(x.id).tuiles?.filter(t => t.o === e && t.b).length || 0) * 20, 0) + (c.id === 'terre' ? 2000 : 0);
+      const terrain = ennemis.flatMap(e => CORPS.filter(c => !c.parent && corpsIci(pos(c)).some(x => present(x.id, e))).map(c => ({ c, e, d: defense(c, e), v: valeur(c, e) / (1 + dist(f.pos, pos(c)) / 8) })));
+      cible = terrain.filter(x => puissance(f) >= x.d * 1.2).sort((a, b) => b.v / (1 + b.d) - a.v / (1 + a.d))[0] || null;
       // assez de troupes pour la garnison la plus forte du lieu, sinon pas de débarquement
-      if (cible) transports = Math.ceil((Math.max(...corpsIci(pos(cible)).filter(x => present(x.id)).map(x => garnison(x, E.j))) + 5) / 10);
+      if (cible) transports = Math.ceil((Math.max(...corpsIci(pos(cible.c)).filter(x => present(x.id, cible.e)).map(x => garnison(x, cible.e))) + 5) / 10);
     }
-    if (E.rel[r] === 'guerre' || menace) for (let n = Math.min(4, 1 + Math.floor(ia.cr / 600)); n > 0 && ia.cr > 90 && ia.me > 60; n--) { // les réserves de paix deviennent une flotte de guerre
+    if (ennemis.length || menace) for (let n = Math.min(4, 1 + Math.floor(ia.cr / 600)); n > 0 && ia.cr > 90 && ia.me > 60; n--) { // les réserves de paix deviennent une flotte de guerre
       const tr = cible && (f.nav.tr || 0) < Math.min(12, transports), k = tr ? 'tr' : 'cr';
       f.nav[k] = (f.nav[k] || 0) + 1; ia.cr -= tr ? 50 : 60; ia.me -= tr ? 40 : 50;
     }
     else if (ia.cr > 600 && ia.me > 60 && rapport < 1.2) { f.nav.cr = (f.nav.cr || 0) + 1; ia.cr -= 60; ia.me -= 50; } // en paix, un rival riche suit votre course aux armements
     else if (E.tour % 6 === 0) f.nav.ch += 1;
-    if (assiegee && E.rel[r] === 'guerre' && puissance(f) >= puissance(assiegee) * .8) { f.role = 'patrouille'; f.siege = null; deplacerIA(f, assiegee.pos, 3); } // briser le blocus d'abord
-    else if (E.rel[r] === 'guerre') {
+    if (assiegee && puissance(f) >= puissance(assiegee) * .8) { f.role = 'patrouille'; f.siege = null; deplacerIA(f, assiegee.pos, 3); } // briser le blocus d'abord
+    else if (ennemis.length) {
       if (!cible) { f.role = 'patrouille'; f.siege = null; deplacerIA(f, pos(C.terre), 3); return; } // trop faible : on se replie et on construit
       f.role = (f.nav.tr || 0) >= transports ? 'siege' : 'raid';
-      if (dist(f.pos, pos(cible)) > 0) deplacerIA(f, pos(cible), 3);
-      else if (f.role === 'raid') raid(f, cible, E.j);
+      if (dist(f.pos, pos(cible.c)) > 0) deplacerIA(f, pos(cible.c), 3);
+      else if (f.role === 'raid') raid(f, cible.c, cible.e);
+      else if (f.siege?.fac !== cible.e) f.siege = { fac: cible.e, prog: 0 };
     } else { f.role = 'patrouille'; f.siege = null; deplacerIA(f, chasse ? menace.pos : pos(C.terre), 3); }
   });
 }
@@ -2022,7 +2047,7 @@ function panFactions() {
   [...E.rivaux, ...Object.keys(E.reps)].forEach(r => {
     const cols = CORPS.filter(c => present(c.id, r)).map(c => c.nom), fl = E.flottes.find(f => f.camp === r), rel = E.rel[r], rival = E.rivaux.includes(r);
     h += `<div class="carte-p"><b style="color:${FAC[r].c};font:600 16px var(--titre)">${FAC[r].nom}</b> <span class="chip ${rel}">${{ paix: 'Paix', guerre: 'Guerre', pacte: 'Pacte' }[rel]}</span><p class="sous">${FAC[r].desc}${rival ? ` Bonus : ${FAC[r].bonus}.${capitalePrise(r) ? ' Sa capitale est tombée.' : ''}` : ''}</p>`;
-    h += `<dl class="grille"><dt>Présence</dt><dd>${cols.join(', ') || '—'}</dd><dt>Flotte</dt><dd>${fl ? fmt(puissance(fl)) : 'détruite'}</dd><dt>Tension</dt><dd>${fmt(E.tension[r])} / 100</dd></dl><div class="barre-p"><b style="width:${E.tension[r]}%;background:${E.tension[r] > 70 ? 'var(--rouge)' : 'var(--soleil)'}"></b></div><div class="actions" style="justify-content:flex-start">`;
+    h += `<dl class="grille"><dt>Présence</dt><dd>${cols.join(', ') || '—'}</dd><dt>Flotte</dt><dd>${fl ? fmt(puissance(fl)) : 'détruite'}${E.ia[r]?.niv ? ` (vaisseaux +${E.ia[r].niv * 10} %)` : ''}</dd>${rival ? `<dt>Rival</dt><dd>${E.rivaux.filter(x => x !== r).map(x => `${E.guerreR[paire(r, x)] ? 'en guerre contre' : 'en paix avec'} ${FAC[x].le}`).join('') || '—'}</dd>` : ''}<dt>Tension</dt><dd>${fmt(E.tension[r])} / 100</dd></dl><div class="barre-p"><b style="width:${E.tension[r]}%;background:${E.tension[r] > 70 ? 'var(--rouge)' : 'var(--soleil)'}"></b></div><div class="actions" style="justify-content:flex-start">`;
     if (rel === 'guerre') h += `<button class="btn petit" data-a="dip:${r}:paix" ${E.res.cr >= 150 ? '' : 'disabled'}>Proposer la paix (150 ₡)</button>`;
     else { if (rel === 'paix') h += `<button class="btn petit" data-a="dip:${r}:pacte" ${E.tension[r] < 50 ? '' : 'disabled'}>Pacte commercial</button>`; h += `<button class="btn petit rouge" data-a="dip:${r}:guerre">Déclarer la guerre</button>`; }
     h += `</div></div>`;
@@ -2064,6 +2089,7 @@ document.addEventListener('click', e => {
   const c = C[E.sel];
   switch (a) {
     case 'faction': initPartie(x); return;
+    case 'diff': difficulte = x; rendreDiff(); return;
     case 'tour': tourSuivant(); return;
     case 'tab': E.onglet = x; break;
     case 'vue': if (x === 'planete') { allerSurface(); return; } E.vue = 'systeme'; E.carteBat = null; recentrer(); break;
@@ -2122,6 +2148,8 @@ addEventListener('keydown', e => { if (e.target.closest('input,textarea,select')
 
 // ---------- Démarrage ----------
 $('choixFaction').innerHTML = ['atl', 'hel', 'pac'].map(f => `<button data-a="faction:${f}" style="border-color:${FAC[f].c}"><b style="color:${FAC[f].c}">${FAC[f].nom}</b><span>${FAC[f].desc}</span><em style="background:${FAC[f].c}">${FAC[f].bonus}</em></button>`).join('');
+function rendreDiff() { $('choixDiff').innerHTML = Object.entries(DIFF).map(([k, d]) => `<button class="btn petit ${k === difficulte ? 'or' : ''}" data-a="diff:${k}" aria-pressed="${k === difficulte}">${d.n}</button>`).join(''); }
+rendreDiff();
 taille();
 // Fond de l'écran d'accueil : la partie de démonstration tourne déjà derrière
 initPartie('atl'); $('accueil').hidden = false; E.journal = []; journal('Choisissez votre faction pour commencer.');
