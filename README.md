@@ -24,7 +24,8 @@ Cette sauvegarde reste dans le navigateur de l'appareil. Pour continuer ailleurs
 - **Colonies** : besoins vitaux (eau, nourriture, oxygène), moral et risque d'indépendance, terraformation de Mars et de Vénus en quatre étapes, convois de ressources vers la Terre.
 - **Orbite** : stations habitées en tore, anneaux de vie, chantiers navals, satellites de défense, bouclier orbital, vaisseau-arche.
 - **Flottes** : chasseurs, croiseurs, porte-vaisseaux, transports de troupes ; rôles patrouille, escorte, raid et siège ; débarquements ; fronde gravitationnelle autour de Jupiter et de Saturne ; points de Lagrange à prendre.
-- **Rivaux** : deux factions avec leur économie, leur diplomatie (pacte, alliance, paix, guerre), leurs flottes et leur recherche militaire. Ils se font aussi la guerre entre eux quand ils se disputent les mêmes corps.
+- **Rivaux** : deux factions avec leur économie, leur diplomatie (pacte, alliance, paix, guerre), leurs flottes et leur recherche militaire. Ils se font aussi la guerre entre eux quand ils se disputent les mêmes corps. On peut s'allier à l'un contre l'autre, et un partenaire commercial attaqué vous appelle à l'aide.
+- **Républiques** : une colonie qui fait sécession devient une faction à part entière, avec son économie, ses bâtiments, sa flotte et sa diplomatie.
 - **Difficulté** : facile, normal ou difficile, à choisir sur l'écran d'accueil (revenus des rivaux et seuil de leur déclaration de guerre).
 - **Événements** : éruptions solaires, tempêtes martiennes, impacts de comètes, geysers, orages de radiations, tous animés.
 - **Victoires** : domination, arche interstellaire, sphère achevée, paix des étoiles. **Défaites** : capitale perdue, faillite, Terre gelée.
