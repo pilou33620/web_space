@@ -8,10 +8,14 @@ La partie commence en 2081 sur une Terre partagée entre trois puissances. Il fa
 
 Le jeu tient en un seul fichier, `index.html`, sans installation ni compilation.
 
+- **Par web_launcher** : carte Héliosphère (port 8795). Depuis un autre appareil, ouvrez l'adresse par l'IP du Pi ; le code d'appairage demandé une fois s'affiche sur la carte, et HTTPS demande d'installer la CA (`/appairage/ca.pem`).
+- **Avec le serveur** : `python3 serveur.py [--port 8795] [--local] [--sans-navigateur] [--sans-pause] [--sans-maj]`. Python 3.8+, bibliothèque standard seulement. Sans `--sans-maj`, il se met à jour depuis GitHub au démarrage.
 - **Localement** : ouvrez `index.html` dans un navigateur récent. Il faut une connexion internet pour charger three.js et les polices.
 - **En ligne** : activez GitHub Pages sur la branche `main` (Settings → Pages). Le jeu sera alors à l'adresse `https://pilou33620.github.io/web_space/`.
 
-La partie s'enregistre dans le navigateur à chaque mois de jeu. L'écran d'accueil propose de la reprendre.
+La partie s'enregistre dans le navigateur à chaque mois de jeu. L'écran d'accueil propose de la reprendre. Le serveur ne stocke rien.
+
+Bancs d'essai : `python3 test/banc-serveur.py` et `python3 appairage.py`, qui affichent `OK`.
 
 Cette sauvegarde reste dans le navigateur de l'appareil. Pour continuer ailleurs : onglet des objectifs → **Exporter (fichier)**, puis sur l'autre appareil, écran d'accueil → **Importer une partie (fichier)**.
 
