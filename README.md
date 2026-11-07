@@ -13,6 +13,8 @@ Le jeu tient en un seul fichier, `index.html`, sans installation ni compilation.
 
 La partie s'enregistre dans le navigateur à chaque mois de jeu. L'écran d'accueil propose de la reprendre.
 
+Cette sauvegarde reste dans le navigateur de l'appareil. Pour continuer ailleurs : onglet des objectifs → **Exporter (fichier)**, puis sur l'autre appareil, écran d'accueil → **Importer une partie (fichier)**.
+
 ## Ce qu'on trouve dans le jeu
 
 - **Vue système** : grille d'hexagones à l'échelle (rayon d'orbite en cases ≈ 5 × √(distance en ua)), planètes en mini-globes hexagonaux éclairés par le Soleil, ceintures d'astéroïdes et de Kuiper, Troyens de Jupiter, comète. Glisser pour se déplacer, pincer pour zoomer.
