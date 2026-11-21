@@ -10,10 +10,3 @@ jobs:
       # le serveur : fichiers servis, Host, méthodes refusées, ligne de commande
       - name: Serveur (Rust)
         run: cargo test -p space
-      # l'ancien serveur Python, retiré à l'envoi suivant
-      - uses: actions/setup-python@v5
-        with: { python-version: '3.12' }
-      - name: Serveur Python — fichiers servis, Host
-        run: python test/banc-serveur.py
-      - name: Appairage Python — code, jeton et cookie partagés
-        run: python appairage.py

@@ -9,13 +9,13 @@ La partie commence en 2081 sur une Terre partagée entre trois puissances. Il fa
 Le jeu tient en un seul fichier, `index.html`, sans installation ni compilation.
 
 - **Par web_launcher** : carte Héliosphère (port 8795). Depuis un autre appareil, ouvrez l'adresse par l'IP du Pi ; le code d'appairage demandé une fois s'affiche sur la carte, et HTTPS demande d'installer la CA (`/appairage/ca.pem`).
-- **Avec le serveur** : `python3 serveur.py [--port 8795] [--local] [--sans-navigateur] [--sans-pause] [--sans-maj]`. Python 3.8+, bibliothèque standard seulement. Sans `--sans-maj`, il se met à jour depuis GitHub au démarrage.
+- **Avec le serveur** : `./lancer.sh [--port 8795] [--local] [--sans-navigateur] [--sans-pause] [--sans-maj]` (Linux, macOS, Raspberry Pi) ou `lancer.bat` (Windows). Le serveur est écrit en Rust : avec `cargo` sur le poste, il est compilé sur place ; sinon `binaires.sh` (ou `binaires.cmd`) télécharge l'exécutable compilé par la CI (publication GitHub « binaires », vérifiée par son empreinte SHA-256). Il écoute sur le réseau local derrière l'appairage des web tools ; `--local` le limite à `127.0.0.1`. S'il est occupé, le port suivant libre est pris (10 essais). Sans `--sans-maj`, il se met à jour depuis GitHub au démarrage (avance rapide seulement) et `lancer.sh` relance la nouvelle version.
 - **Localement** : ouvrez `index.html` dans un navigateur récent. Il faut une connexion internet pour charger three.js et les polices.
 - **En ligne** : activez GitHub Pages sur la branche `main` (Settings → Pages). Le jeu sera alors à l'adresse `https://pilou33620.github.io/web_space/`.
 
 La partie s'enregistre dans le navigateur à chaque mois de jeu. L'écran d'accueil propose de la reprendre. Le serveur ne stocke rien.
 
-Bancs d'essai : `python3 test/banc-serveur.py` et `python3 appairage.py`, qui affichent `OK`.
+Bancs d'essai : `cargo test -p space` (fichiers servis et refusés, Host, méthodes, ligne de commande). Ils tournent aussi en CI à chaque envoi ; l'appairage est testé dans la caisse commune `web_tools_commun` (dépôt web_suite).
 
 Cette sauvegarde reste dans le navigateur de l'appareil. Pour continuer ailleurs : onglet des objectifs → **Exporter (fichier)**, puis sur l'autre appareil, écran d'accueil → **Importer une partie (fichier)**.
 
