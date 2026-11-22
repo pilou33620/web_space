@@ -11,7 +11,7 @@ use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use web_tools_commun::appairage::{self, Garde};
-use web_tools_commun::serveur::{decoder_url, Reponse, Requete, Serveur};
+use web_tools_commun::serveur::{decoder_chemin, Reponse, Requete, Serveur};
 
 pub const PORT: u16 = 8795;
 
@@ -43,7 +43,7 @@ fn reponse(r: &mut Requete) -> Reponse {
     if !r.lecture() {
         return Reponse::texte(501, "méthode non prise en charge");
     }
-    let chemin = decoder_url(r.chemin());
+    let chemin = decoder_chemin(r.chemin());
     if chemin != "/" && chemin != "/index.html" {
         return Reponse::texte(404, "introuvable");
     }
