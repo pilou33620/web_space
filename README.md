@@ -4,12 +4,37 @@
 
 La partie commence en 2081 sur une Terre partagée entre trois puissances. Il faut coloniser les planètes et les lunes, construire sur leur surface et en orbite, mener des flottes, et capter l'énergie du Soleil sans geler la Terre. Au-delà de Neptune, les Veilleurs observent.
 
+## Installation
+
+### Le plus simple : l'archive de production (sans git, sans rien installer)
+
+Dans la [publication « binaires »](https://github.com/pilou33620/web_space/releases/tag/binaires), prendre l'archive du système :
+
+| Système | Archive |
+|---|---|
+| Windows | `space-prod-windows-x86_64.zip` |
+| Linux x86_64 | `space-prod-linux-x86_64.tar.gz` |
+| Raspberry Pi (64 bits) | `space-prod-linux-aarch64.tar.gz` |
+| macOS (Apple) | `space-prod-macos-aarch64.tar.gz` |
+
+La décompresser où l'on veut (elle donne un dossier `space/` : le serveur dans `bin/`, `index.html`, les scripts de démarrage), puis double-cliquer sur `demarrer_WEB_SPACE.cmd` (Windows) ou lancer `./demarrer_WEB_SPACE.sh`. À chaque démarrage, le serveur compare son archive à la dernière publiée ; si elle a changé, il la télécharge (empreinte SHA-256 vérifiée), recopie ses fichiers par-dessus et redémarre. La partie vit dans le navigateur : une mise à jour ne la touche pas.
+
+### Pour développer : le dépôt git
+
+```bash
+git clone https://github.com/pilou33620/web_space.git
+cd web_space
+./demarrer_WEB_SPACE.sh             # Windows : demarrer_WEB_SPACE.cmd
+```
+
+`demarrer_WEB_SPACE` obtient d'abord le serveur (`scripts/binaires.sh`, `scripts/binaires.cmd`) : avec `cargo` sur le poste, il est compilé sur place ; sinon il télécharge l'exécutable compilé par la CI (publication GitHub « binaires », vérifiée par son empreinte SHA-256). À la racine, seul le lanceur du système en cours reste visible : le premier lancement masque l'autre. Sur une erreur, la fenêtre reste ouverte avec la raison. `lancer.sh` et `lancer.bat` restent, pour web_launcher : ils relaient vers `demarrer_WEB_SPACE` avec les mêmes options.
+
 ## Jouer
 
 Le jeu tient en un seul fichier, `index.html`, sans installation ni compilation.
 
 - **Par web_launcher** : carte Héliosphère (port 8795). Depuis un autre appareil, ouvrez l'adresse par l'IP du Pi ; le code d'appairage demandé une fois s'affiche sur la carte, et HTTPS demande d'installer la CA (`/appairage/ca.pem`).
-- **Avec le serveur** : `./lancer.sh [--port 8795] [--local] [--sans-navigateur] [--sans-pause] [--sans-maj]` (Linux, macOS, Raspberry Pi) ou `lancer.bat` (Windows). Le serveur est écrit en Rust : avec `cargo` sur le poste, il est compilé sur place ; sinon `binaires.sh` (ou `binaires.cmd`) télécharge l'exécutable compilé par la CI (publication GitHub « binaires », vérifiée par son empreinte SHA-256). Il écoute sur le réseau local derrière l'appairage des web tools ; `--local` le limite à `127.0.0.1`. S'il est occupé, le port suivant libre est pris (10 essais). Sans `--sans-maj`, il se met à jour depuis GitHub au démarrage (avance rapide seulement) et `lancer.sh` relance la nouvelle version.
+- **Avec le serveur** : `./demarrer_WEB_SPACE.sh [--port 8795] [--local] [--sans-navigateur] [--sans-pause] [--sans-maj]` (Linux, macOS, Raspberry Pi) ou `demarrer_WEB_SPACE.cmd` (Windows), voir [Installation](#installation). Il écoute sur le réseau local derrière l'appairage des web tools ; `--local` le limite à `127.0.0.1`. S'il est occupé, le port suivant libre est pris (10 essais). Sans `--sans-maj`, il se met à jour depuis GitHub au démarrage (un clone git par avance rapide seulement, une archive de production par la publication « binaires ») et `demarrer_WEB_SPACE` relance la nouvelle version.
 - **Localement** : ouvrez `index.html` dans un navigateur récent. Il faut une connexion internet pour charger three.js et les polices.
 - **En ligne** : activez GitHub Pages sur la branche `main` (Settings → Pages). Le jeu sera alors à l'adresse `https://pilou33620.github.io/web_space/`.
 

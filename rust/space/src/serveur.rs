@@ -11,6 +11,7 @@ use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use web_tools_commun::appairage::{self, Garde};
+use web_tools_commun::production;
 use web_tools_commun::serveur::{decoder_chemin, Reponse, Requete, Serveur};
 
 pub const PORT: u16 = 8795;
@@ -21,7 +22,8 @@ pub fn racine() -> &'static Path {
     static R: OnceLock<PathBuf> = OnceLock::new();
     R.get_or_init(|| {
         let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let jeu = |d: &Path| d.join("index.html").is_file() && d.join("Cargo.toml").is_file();
+        // Cargo.toml : un clone git ; bin/ : une copie de production (ni sources ni .git)
+        let jeu = |d: &Path| d.join("index.html").is_file() && (d.join("Cargo.toml").is_file() || d.join("bin").is_dir());
         if jeu(&cwd) {
             return cwd;
         }
@@ -147,6 +149,14 @@ fn git(args: &[&str], delai: u64) -> Result<String, String> {
 /// Mise à jour par git (avance rapide seulement). Rend vrai si le code a changé.
 /// Tout échec mène à « on démarre avec la version actuelle ».
 fn mise_a_jour() -> bool {
+    // copie de production (archive sans git ni sources) : mise à jour depuis la publication « binaires »
+    if production::est_copie_prod(racine()) {
+        return production::mettre_a_jour("https://github.com/pilou33620/web_space", "space", racine(), &|t| println!("[*] {t}"))
+            .unwrap_or_else(|e| {
+                println!("[X] {e}");
+                false
+            });
+    }
     if !racine().join(".git").exists() || git(&["--version"], 10).is_err() {
         return false;
     }
