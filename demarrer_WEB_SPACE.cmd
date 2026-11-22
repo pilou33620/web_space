@@ -10,7 +10,8 @@ set WEB_SPACE_RELANCEUR=1
 :encore
 call scripts\binaires.cmd
 if errorlevel 1 goto echec
-bin\space.exe %*
+rem lexecutable garde sa propre pause quand il est lance seul : ici, cest ce script qui garde la fenetre ouverte
+bin\space.exe --sans-pause %*
 if %errorlevel%==75 (
   goto encore
 )
